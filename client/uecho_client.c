@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -37,13 +38,13 @@ int main(int argc, char *argv[])
 	serv_adr.sin_family = AF_INET;
 	serv_adr.sin_addr.s_addr = inet_addr(argv[1]);
 	serv_adr.sin_port = htons(atoi(argv[2]));
-    printf("sending %s/n", argv[3]);
     FILE *fp = fopen("received.data", "wb");
     int total = 0;
     int size = 0;
     sendto(sock, &size, sizeof(int), 0, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
 	int seq = 0;
     p_st p;
+    clock_t t = clock();
     while (1)
 	{   
         adr_sz = sizeof(from_adr);
@@ -51,6 +52,7 @@ int main(int argc, char *argv[])
                  (struct sockaddr*)&serv_adr, &adr_sz);
         if(seq == p.seq){
             total += p.size;
+            printf("received %d bytes\r", total);
             fwrite(p.buf, 1, p.size, fp);
             sendto(sock, &seq, sizeof(int), 0, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
             seq++;
@@ -60,6 +62,10 @@ int main(int argc, char *argv[])
             sendto(sock, &size, sizeof(int), 0, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
         }
 	}
+    t = clock() - t;
+    double time_taken = ((double) t)/CLOCKS_PER_SEC;
+    printf("\nTime taken : %.3f sec\n", time_taken);
+    printf("Throughput : %.3f Mbps\n", total/time_taken/1000000 * 8);
     fclose(fp);
     printf("closing..(%d)\n", total);
 	close(sock);
